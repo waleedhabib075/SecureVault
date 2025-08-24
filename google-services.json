@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "708985570730",
+    "project_id": "vault-a0223",
+    "storage_bucket": "vault-a0223.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:708985570730:android:17037cb678ee93e12b97d3",
+        "android_client_info": {
+          "package_name": "com.waleed.Securevault"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDJoAf5gO4N7JnY_j1UW1M0xGfI5WbzzbA"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

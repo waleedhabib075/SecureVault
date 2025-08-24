@@ -1,0 +1,440 @@
+# Secure Vault - Setup Guide
+
+This guide will walk you through setting up the Secure Vault project for both backend and mobile development.
+
+## Prerequisites
+
+Before you begin, ensure you have the following installed:
+
+- **Node.js** (v18 or higher)
+- **npm** or **yarn**
+- **Git**
+- **MongoDB** (local or Atlas)
+- **Firebase** project
+- **RevenueCat** account (for subscriptions)
+- **Expo CLI** (for mobile development)
+
+## Project Structure
+
+```
+secure-vault/
+├── backend/                 # Node.js/Express API
+│   ├── src/
+│   │   ├── config/         # Database, Firebase config
+│   │   ├── models/         # MongoDB schemas
+│   │   ├── routes/         # API endpoints
+│   │   ├── middleware/     # Auth, validation, error handling
+│   │   ├── utils/          # Logging, utilities
+│   │   └── server.js       # Main server file
+│   ├── package.json
+│   └── env.example
+├── mobile/                  # React Native app
+│   ├── src/
+│   │   ├── components/     # Reusable components
+│   │   ├── screens/        # App screens
+│   │   ├── stores/         # State management
+│   │   ├── services/       # API services
+│   │   ├── theme/          # UI themes
+│   │   └── utils/          # Utilities
+│   ├── App.tsx
+│   ├── package.json
+│   └── env.example
+└── docs/                   # Documentation
+```
+
+## Backend Setup
+
+### 1. Clone and Install Dependencies
+
+```bash
+cd backend
+npm install
+```
+
+### 2. Environment Configuration
+
+Copy the environment template and configure your variables:
+
+```bash
+cp env.example .env
+```
+
+Edit `.env` with your actual values:
+
+```env
+# Server Configuration
+NODE_ENV=development
+PORT=3000
+HOST=localhost
+
+# MongoDB Configuration
+MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/secure-vault
+
+# Firebase Configuration
+FIREBASE_PROJECT_ID=your-firebase-project-id
+FIREBASE_PRIVATE_KEY="-----BEGIN PRIVATE KEY-----\nYour private key here\n-----END PRIVATE KEY-----\n"
+FIREBASE_CLIENT_EMAIL=firebase-adminsdk-xxxxx@your-project.iam.gserviceaccount.com
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+
+# RevenueCat Configuration
+REVENUECAT_WEBHOOK_SECRET=your-webhook-secret
+REVENUECAT_API_KEY=your-api-key
+
+# JWT Configuration
+JWT_SECRET=your-super-secret-jwt-key-here
+```
+
+### 3. Firebase Setup
+
+1. Go to [Firebase Console](https://console.firebase.google.com/)
+2. Create a new project or select existing
+3. Enable Authentication (Email/Password, Google, Apple)
+4. Enable Cloud Storage
+5. Enable Cloud Messaging
+6. Go to Project Settings > Service Accounts
+7. Generate new private key
+8. Download and extract the JSON file
+9. Copy values to your `.env` file
+
+### 4. MongoDB Setup
+
+#### Option A: MongoDB Atlas (Recommended)
+
+1. Go to [MongoDB Atlas](https://www.mongodb.com/atlas)
+2. Create a free cluster
+3. Create a database user
+4. Get your connection string
+5. Add your IP to whitelist
+6. Copy connection string to `.env`
+
+#### Option B: Local MongoDB
+
+```bash
+# macOS (using Homebrew)
+brew install mongodb-community
+brew services start mongodb-community
+
+# Ubuntu/Debian
+sudo apt-get install mongodb
+sudo systemctl start mongodb
+
+# Windows
+# Download and install from mongodb.com
+```
+
+### 5. Start the Backend
+
+```bash
+# Development mode
+npm run dev
+
+# Production mode
+npm start
+```
+
+The API will be available at `http://localhost:3000`
+
+## Mobile App Setup
+
+### 1. Install Dependencies
+
+```bash
+cd mobile
+npm install
+```
+
+### 2. Environment Configuration
+
+Copy the environment template:
+
+```bash
+cp env.example .env
+```
+
+Configure your environment variables:
+
+```env
+# API Configuration
+API_BASE_URL=http://localhost:3000/api
+
+# Firebase Configuration
+FIREBASE_API_KEY=your-firebase-api-key
+FIREBASE_AUTH_DOMAIN=your-project.firebaseapp.com
+FIREBASE_PROJECT_ID=your-project-id
+FIREBASE_STORAGE_BUCKET=your-project.appspot.com
+FIREBASE_MESSAGING_SENDER_ID=your-sender-id
+FIREBASE_APP_ID=your-app-id
+
+# RevenueCat Configuration
+REVENUECAT_API_KEY=your-revenuecat-api-key
+```
+
+### 3. Firebase Mobile Configuration
+
+1. In Firebase Console, go to Project Settings
+2. Add your app (iOS/Android)
+3. Download `google-services.json` (Android) or `GoogleService-Info.plist` (iOS)
+4. Place in appropriate directories:
+   - Android: `mobile/android/app/`
+   - iOS: `mobile/ios/`
+
+### 4. Start the Mobile App
+
+```bash
+# Start Expo development server
+npx expo start
+
+# Run on specific platform
+npx expo start --android
+npx expo start --ios
+```
+
+## RevenueCat Setup
+
+### 1. Create Account
+
+1. Go to [RevenueCat](https://www.revenuecat.com/)
+2. Sign up and create a project
+3. Add your app (iOS/Android)
+
+### 2. Configure Products
+
+1. Create subscription products:
+
+   - `pro_month` - Pro Monthly ($9.99)
+   - `pro_year` - Pro Yearly ($99.99)
+   - `business_month` - Business Monthly ($19.99)
+   - `business_year` - Business Yearly ($199.99)
+
+2. Create entitlements:
+   - `free` - Basic features
+   - `pro` - Pro features
+   - `business` - Business features
+
+### 3. Configure Webhooks
+
+1. Go to Project Settings > Webhooks
+2. Add webhook URL: `https://your-api.com/api/webhooks/revenuecat`
+3. Select events: `INITIAL_PURCHASE`, `RENEWAL`, `CANCELLATION`
+
+## Testing the Setup
+
+### 1. Backend Health Check
+
+```bash
+curl http://localhost:3000/health
+```
+
+Expected response:
+
+```json
+{
+  "status": "OK",
+  "timestamp": "2024-01-01T00:00:00.000Z",
+  "environment": "development"
+}
+```
+
+### 2. Test Authentication
+
+```bash
+# Test user linking
+curl -X POST http://localhost:3000/api/auth/link \
+  -H "Content-Type: application/json" \
+  -d '{
+    "firebaseUid": "test-uid",
+    "email": "test@example.com",
+    "displayName": "Test User"
+  }'
+```
+
+### 3. Mobile App Test
+
+1. Open the app in Expo Go
+2. Try to sign up with a test email
+3. Verify authentication flow works
+4. Check if user is created in MongoDB
+
+## Common Issues & Solutions
+
+### Backend Issues
+
+**MongoDB Connection Failed**
+
+- Check if MongoDB is running
+- Verify connection string in `.env`
+- Check network/firewall settings
+
+**Firebase Initialization Error**
+
+- Verify service account credentials
+- Check if private key is properly formatted
+- Ensure Firebase project exists
+
+**Port Already in Use**
+
+```bash
+# Find process using port 3000
+lsof -i :3000
+# Kill the process
+kill -9 <PID>
+```
+
+### Mobile Issues
+
+**Expo Build Errors**
+
+```bash
+# Clear cache
+npx expo start --clear
+
+# Reset Metro bundler
+npx expo start --reset-cache
+```
+
+**Firebase Configuration Error**
+
+- Verify `google-services.json` placement
+- Check Firebase project ID matches
+- Ensure Authentication is enabled
+
+**Network Error**
+
+- Check if backend is running
+- Verify API_BASE_URL in `.env`
+- Check CORS configuration
+
+## Development Workflow
+
+### 1. Backend Development
+
+```bash
+# Start in development mode
+npm run dev
+
+# Run tests
+npm test
+
+# Lint code
+npm run lint
+
+# Fix linting issues
+npm run lint:fix
+```
+
+### 2. Mobile Development
+
+```bash
+# Start Expo
+npx expo start
+
+# Build for testing
+npx expo build:android
+npx expo build:ios
+
+# Submit to stores
+npx expo submit:android
+npx expo submit:ios
+```
+
+### 3. Database Management
+
+```bash
+# Connect to MongoDB
+mongosh "mongodb://localhost:27017/secure-vault"
+
+# View collections
+show collections
+
+# Query users
+db.users.find().pretty()
+```
+
+## Production Deployment
+
+### Backend Deployment
+
+1. **Environment Variables**
+
+   - Set `NODE_ENV=production`
+   - Use production MongoDB URI
+   - Configure production Firebase credentials
+
+2. **Deployment Options**
+
+   - **Heroku**: Connect GitHub repo, set environment variables
+   - **Railway**: Import from GitHub, configure environment
+   - **DigitalOcean**: Deploy using App Platform
+   - **AWS**: Use Elastic Beanstalk or ECS
+
+3. **SSL/HTTPS**
+   - Configure domain and SSL certificate
+   - Update CORS origins
+   - Set secure cookies
+
+### Mobile App Deployment
+
+1. **Build Production App**
+
+   ```bash
+   npx expo build:android --release-channel production
+   npx expo build:ios --release-channel production
+   ```
+
+2. **Store Submission**
+   - Android: Upload APK to Google Play Console
+   - iOS: Upload IPA to App Store Connect
+   - Configure store listings and metadata
+
+## Security Considerations
+
+### Backend Security
+
+- Use strong JWT secrets
+- Implement rate limiting
+- Validate all inputs
+- Use HTTPS in production
+- Regular security updates
+
+### Mobile Security
+
+- Secure storage for sensitive data
+- Biometric authentication
+- Certificate pinning (optional)
+- Code obfuscation
+- Regular dependency updates
+
+## Monitoring & Analytics
+
+### Backend Monitoring
+
+- Use Winston for structured logging
+- Implement health checks
+- Monitor API performance
+- Set up error tracking (Sentry)
+
+### Mobile Analytics
+
+- Firebase Analytics for user behavior
+- Crashlytics for crash reporting
+- Performance monitoring
+- User engagement metrics
+
+## Support & Resources
+
+- **Documentation**: Check the `docs/` folder
+- **Issues**: Create GitHub issues for bugs
+- **Discussions**: Use GitHub Discussions for questions
+- **Community**: Join our Discord/Slack
+
+## Next Steps
+
+After setup, you can:
+
+1. **Customize the UI**: Modify themes and components
+2. **Add Features**: Implement additional functionality
+3. **Testing**: Write unit and integration tests
+4. **CI/CD**: Set up automated testing and deployment
+5. **Performance**: Optimize for speed and efficiency
+
+Happy coding! 🚀
