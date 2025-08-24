@@ -2,7 +2,9 @@ import cors from 'cors';
 import dotenv from 'dotenv';
 import express from 'express';
 import { connectDatabase } from './config/database';
+import './config/firebase';
 import authRoutes from './routes/auth';
+import fileRoutes from './routes/files';
 
 // Load environment variables
 dotenv.config();
@@ -17,8 +19,8 @@ app.use(cors({
   credentials: true,
 }));
 
-app.use(express.json({ limit: '10mb' }));
-app.use(express.urlencoded({ extended: true, limit: '10mb' }));
+app.use(express.json({ limit: '500mb' }));
+app.use(express.urlencoded({ extended: true, limit: '500mb' }));
 
 // Request logging middleware
 app.use((req, res, next) => {
@@ -38,15 +40,29 @@ app.get('/health', (req, res) => {
 
 // API routes
 app.use('/api/auth', authRoutes);
+app.use('/api/files', fileRoutes);
+
+// API info endpoint
+app.get('/api', (req, res) => {
+  res.json({
+    message: 'SecureVault Backend API',
+    version: '1.0.0',
+    endpoints: {
+      auth: '/api/auth',
+      files: '/api/files',
+      health: '/health'
+    }
+  });
+});
 
 // 404 handler
 app.use('*', (req, res) => {
-  res.status(404).json({ error: 'Route not found' });
+  res.status(404).json({ error: 'Endpoint not found' });
 });
 
 // Global error handler
 app.use((error: any, req: express.Request, res: express.Response, next: express.NextFunction) => {
-  console.error('Global error handler:', error);
+  console.error('Global error:', error);
   
   if (error.name === 'ValidationError') {
     return res.status(400).json({ error: 'Validation error', details: error.message });
@@ -67,12 +83,12 @@ const startServer = async () => {
     
     // Start listening
     app.listen(PORT, () => {
-      console.log(`🚀 Server running on http://${HOST}:${PORT}`);
-      console.log(`📊 Environment: ${process.env.NODE_ENV || 'development'}`);
-      console.log(`🔗 Health check: http://${HOST}:${PORT}/health`);
+      console.log('🚀 Server running on http://localhost:3000');
+      console.log('📊 Environment:', process.env.NODE_ENV || 'development');
+      console.log('🔗 Health check: http://localhost:3000/health');
     });
   } catch (error) {
-    console.error('❌ Failed to start server:', error);
+    console.error('Failed to start server:', error);
     process.exit(1);
   }
 };

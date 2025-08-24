@@ -1,17 +1,29 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  TouchableOpacity,
-  StyleSheet,
-  ScrollView,
-  TextInput,
-  Image,
-  Alert,
-} from 'react-native';
+import FileUploadModal from '@/components/FileUploadModal';
 import { useAuthStore } from '@/stores/authStore';
 import { useVaultStore } from '@/stores/vaultStore';
-import { Shield, Search, Plus, MoveVertical as MoreVertical, File, Image as ImageIcon, Video, Music, Grid3x3, List, Import as SortAsc } from 'lucide-react-native';
+import {
+  File,
+  Grid3x3,
+  Image as ImageIcon,
+  List,
+  Music,
+  Plus,
+  Search,
+  Shield,
+  Import as SortAsc,
+  Video,
+} from 'lucide-react-native';
+import React, { useEffect, useState } from 'react';
+import {
+  Alert,
+  Image,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+} from 'react-native';
 
 export default function VaultScreen() {
   const { user, vaultUnlocked, lockVault } = useAuthStore();
@@ -28,9 +40,19 @@ export default function VaultScreen() {
     clearSelection,
     addFile,
     deleteFiles,
+    getTotalStorageUsed,
+    loadFilesFromBackend,
   } = useVaultStore();
 
   const [showOptions, setShowOptions] = useState(false);
+  const [showUploadModal, setShowUploadModal] = useState(false);
+
+  // Load files from backend when component mounts
+  useEffect(() => {
+    if (vaultUnlocked) {
+      loadFilesFromBackend();
+    }
+  }, [vaultUnlocked]);
 
   if (!vaultUnlocked) {
     return (
@@ -44,7 +66,7 @@ export default function VaultScreen() {
     );
   }
 
-  const filteredFiles = files.filter(file =>
+  const filteredFiles = files.filter((file) =>
     file.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
@@ -53,7 +75,9 @@ export default function VaultScreen() {
       case 'name':
         return a.name.localeCompare(b.name);
       case 'date':
-        return new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime();
+        return (
+          new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime()
+        );
       case 'size':
         return b.size - a.size;
       case 'type':
@@ -84,22 +108,22 @@ export default function VaultScreen() {
     return parseFloat((bytes / Math.pow(k, i)).toFixed(1)) + ' ' + sizes[i];
   };
 
-  const handleAddFile = () => {
-    // Simulate file picker
-    const mockFile = {
-      name: `New File ${Date.now()}.jpg`,
-      type: 'image' as const,
-      size: Math.floor(Math.random() * 5000000),
-      encrypted: true,
-      thumbnail: 'https://images.pexels.com/photos/1181671/pexels-photo-1181671.jpeg?w=150&h=150&fit=crop',
-    };
-    addFile(mockFile);
-    Alert.alert('Success', 'File added to vault and encrypted');
+  const handleFileUploaded = async (file: any) => {
+    // Add file to local state immediately for UI responsiveness
+    addFile(file);
+    console.log('✅ File uploaded and encrypted:', file.name);
+
+    // Refresh files from backend to ensure consistency
+    try {
+      await loadFilesFromBackend();
+    } catch (error) {
+      console.error('Failed to refresh files from backend:', error);
+    }
   };
 
   const handleDeleteSelected = () => {
     if (selectedFiles.length === 0) return;
-    
+
     Alert.alert(
       'Delete Files',
       `Are you sure you want to delete ${selectedFiles.length} file(s)?`,
@@ -117,13 +141,20 @@ export default function VaultScreen() {
     );
   };
 
+  const totalStorage = getTotalStorageUsed();
+  const storageUsed = formatFileSize(totalStorage);
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
         <View style={styles.headerTop}>
           <View>
-            <Text style={styles.greeting}>Welcome back, {user?.displayName}</Text>
-            <Text style={styles.fileCount}>{files.length} encrypted files</Text>
+            <Text style={styles.greeting}>
+              Welcome back, {user?.displayName}
+            </Text>
+            <Text style={styles.fileCount}>
+              {files.length} encrypted files • {storageUsed}
+            </Text>
           </View>
           <TouchableOpacity style={styles.lockButton} onPress={lockVault}>
             <Shield size={24} color="#F97316" />
@@ -144,16 +175,28 @@ export default function VaultScreen() {
         <View style={styles.controls}>
           <View style={styles.controlsLeft}>
             <TouchableOpacity
-              style={[styles.controlButton, viewMode === 'grid' && styles.controlButtonActive]}
+              style={[
+                styles.controlButton,
+                viewMode === 'grid' && styles.controlButtonActive,
+              ]}
               onPress={() => setViewMode('grid')}
             >
-              <Grid3x3 size={18} color={viewMode === 'grid' ? '#F97316' : '#64748B'} />
+              <Grid3x3
+                size={18}
+                color={viewMode === 'grid' ? '#F97316' : '#64748B'}
+              />
             </TouchableOpacity>
             <TouchableOpacity
-              style={[styles.controlButton, viewMode === 'list' && styles.controlButtonActive]}
+              style={[
+                styles.controlButton,
+                viewMode === 'list' && styles.controlButtonActive,
+              ]}
               onPress={() => setViewMode('list')}
             >
-              <List size={18} color={viewMode === 'list' ? '#F97316' : '#64748B'} />
+              <List
+                size={18}
+                color={viewMode === 'list' ? '#F97316' : '#64748B'}
+              />
             </TouchableOpacity>
           </View>
 
@@ -161,7 +204,10 @@ export default function VaultScreen() {
             <TouchableOpacity style={styles.controlButton}>
               <SortAsc size={18} color="#64748B" />
             </TouchableOpacity>
-            <TouchableOpacity style={styles.addButton} onPress={handleAddFile}>
+            <TouchableOpacity
+              style={styles.addButton}
+              onPress={() => setShowUploadModal(true)}
+            >
               <Plus size={20} color="#FFFFFF" />
             </TouchableOpacity>
           </View>
@@ -174,10 +220,16 @@ export default function VaultScreen() {
             {selectedFiles.length} selected
           </Text>
           <View style={styles.selectionActions}>
-            <TouchableOpacity style={styles.selectionAction} onPress={clearSelection}>
+            <TouchableOpacity
+              style={styles.selectionAction}
+              onPress={clearSelection}
+            >
               <Text style={styles.selectionActionText}>Cancel</Text>
             </TouchableOpacity>
-            <TouchableOpacity style={styles.deleteAction} onPress={handleDeleteSelected}>
+            <TouchableOpacity
+              style={styles.deleteAction}
+              onPress={handleDeleteSelected}
+            >
               <Text style={styles.deleteActionText}>Delete</Text>
             </TouchableOpacity>
           </View>
@@ -199,7 +251,10 @@ export default function VaultScreen() {
               >
                 <View style={styles.filePreview}>
                   {file.thumbnail ? (
-                    <Image source={{ uri: file.thumbnail }} style={styles.thumbnail} />
+                    <Image
+                      source={{ uri: file.thumbnail }}
+                      style={styles.thumbnail}
+                    />
                   ) : (
                     <View style={styles.fileIconContainer}>
                       {getFileIcon(file.type)}
@@ -229,7 +284,10 @@ export default function VaultScreen() {
               >
                 <View style={styles.listItemLeft}>
                   {file.thumbnail ? (
-                    <Image source={{ uri: file.thumbnail }} style={styles.listThumbnail} />
+                    <Image
+                      source={{ uri: file.thumbnail }}
+                      style={styles.listThumbnail}
+                    />
                   ) : (
                     <View style={styles.listFileIcon}>
                       {getFileIcon(file.type)}
@@ -257,13 +315,23 @@ export default function VaultScreen() {
             <Text style={styles.emptySubtitle}>
               Add your first file to start securing your data
             </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={handleAddFile}>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => setShowUploadModal(true)}
+            >
               <Plus size={20} color="#FFFFFF" />
               <Text style={styles.emptyButtonText}>Add File</Text>
             </TouchableOpacity>
           </View>
         )}
       </ScrollView>
+
+      {/* File Upload Modal */}
+      <FileUploadModal
+        visible={showUploadModal}
+        onClose={() => setShowUploadModal(false)}
+        onFileUploaded={handleFileUploaded}
+      />
     </View>
   );
 }

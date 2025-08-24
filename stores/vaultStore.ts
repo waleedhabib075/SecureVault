@@ -1,4 +1,11 @@
+import { FileUploadService } from '@/services/fileUploadService';
 import { create } from 'zustand';
+
+interface EncryptionMetadata {
+  encryptedData: string;
+  iv: string;
+  salt: string;
+}
 
 interface VaultFile {
   id: string;
@@ -11,6 +18,10 @@ interface VaultFile {
   url?: string;
   uploadedAt: string;
   lastModified: string;
+  // New fields for real files
+  encryption?: EncryptionMetadata;
+  originalUri?: string;
+  mimeType?: string;
 }
 
 interface Album {
@@ -42,10 +53,18 @@ interface VaultState {
   setSearchQuery: (query: string) => void;
   setSortBy: (sortBy: 'name' | 'date' | 'size' | 'type') => void;
   setViewMode: (mode: 'grid' | 'list') => void;
+  // New methods for real file operations
+  getFileById: (fileId: string) => VaultFile | undefined;
+  updateFile: (fileId: string, updates: Partial<VaultFile>) => void;
+  getFilesByType: (type: VaultFile['type']) => VaultFile[];
+  getTotalStorageUsed: () => number;
+  loadFilesFromBackend: () => Promise<void>;
+  refreshFiles: () => Promise<void>;
 }
 
 export const useVaultStore = create<VaultState>((set, get) => ({
   files: [
+    // Keep some sample files for demonstration
     {
       id: '1',
       name: 'Important Document.pdf',
@@ -174,5 +193,59 @@ export const useVaultStore = create<VaultState>((set, get) => ({
 
   setViewMode: (mode) => {
     set({ viewMode: mode });
+  },
+
+  // New methods for real file operations
+  getFileById: (fileId) => {
+    const state = get();
+    return state.files.find(file => file.id === fileId);
+  },
+
+  updateFile: (fileId, updates) => {
+    set(state => ({
+      files: state.files.map(file =>
+        file.id === fileId ? { ...file, ...updates } : file
+      ),
+    }));
+  },
+
+  getFilesByType: (type) => {
+    const state = get();
+    return state.files.filter(file => file.type === type);
+  },
+
+  getTotalStorageUsed: () => {
+    const state = get();
+    return state.files.reduce((total, file) => total + file.size, 0);
+  },
+
+  loadFilesFromBackend: async () => {
+    try {
+      const backendFiles = await FileUploadService.getFiles();
+      
+      // Convert backend files to VaultFile format
+      const vaultFiles: VaultFile[] = backendFiles.map(backendFile => ({
+        id: backendFile.id,
+        name: backendFile.name,
+        type: backendFile.type,
+        size: backendFile.size,
+        encrypted: backendFile.encrypted,
+        uploadedAt: backendFile.uploadedAt,
+        lastModified: backendFile.lastModified,
+        encryption: backendFile.encryption,
+        mimeType: backendFile.mimeType,
+      }));
+      
+      set({ files: vaultFiles });
+      console.log('✅ Loaded', vaultFiles.length, 'files from backend');
+    } catch (error) {
+      console.error('❌ Failed to load files from backend:', error);
+      // Keep existing files if backend fails
+    }
+  },
+
+  refreshFiles: async () => {
+    const state = get();
+    await state.loadFilesFromBackend();
   },
 }));

@@ -25,16 +25,23 @@ export const authenticateToken = async (
       return;
     }
 
+    console.log('🔐 Authenticating token for request:', req.path);
+    console.log('📱 Token length:', token.length);
+
     // Verify Firebase token
     const decodedToken = await firebaseAuth.verifyIdToken(token);
+    console.log('✅ Token verified successfully for UID:', decodedToken.uid);
     
     // Find user in database
     const user = await User.findOne({ firebaseUid: decodedToken.uid });
     
     if (!user) {
+      console.log('❌ User not found in database for UID:', decodedToken.uid);
       res.status(404).json({ error: 'User not found' });
       return;
     }
+
+    console.log('✅ User found in database:', user.email);
 
     // Update last login
     await User.findByIdAndUpdate(user._id, { lastLogin: new Date() });
@@ -43,7 +50,19 @@ export const authenticateToken = async (
     req.user = user;
     next();
   } catch (error) {
-    console.error('Authentication error:', error);
+    console.error('❌ Authentication error:', error);
+    
+    // Type-safe error handling
+    if (error && typeof error === 'object' && 'name' in error && 'message' in error && 'code' in error) {
+      console.error('❌ Error details:', {
+        name: (error as any).name,
+        message: (error as any).message,
+        code: (error as any).code
+      });
+    } else {
+      console.error('❌ Error details: Unknown error type');
+    }
+    
     res.status(403).json({ error: 'Invalid or expired token' });
   }
 };
